@@ -1,0 +1,41 @@
+name: Sync Google Sheets
+
+on:
+  schedule:
+    # Toda segunda-feira às 08:00 UTC (ajuste conforme necessário)
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    # Permite rodar manualmente pelo GitHub Actions UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Fetch data from Google Sheets
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python scripts/fetch_sheets.py
+
+      - name: Commit updated data
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add data.json
+          git diff --staged --quiet && echo "No changes to commit" || \
+            git commit -m "chore: update campaign data $(date -u '+%Y-%m-%d')"
+          git push
