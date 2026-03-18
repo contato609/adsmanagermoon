@@ -29,6 +29,7 @@ jobs:
         env:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          SHEET_RANGE : ${{ secrets.SHEET_RANGE }}
         run: python scripts/fetch_sheets.py
 
       - name: Commit updated data
