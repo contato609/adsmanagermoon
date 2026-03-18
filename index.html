@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary:   #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary:  #eeede8;
+    --text-primary: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-tertiary:  #888780;
+    --border:     rgba(0,0,0,0.12);
+    --border-md:  rgba(0,0,0,0.2);
+    --radius-md:  8px;
+    --radius-lg:  12px;
+    --accent:  #378ADD;
+    --green:   #1D9E75;
+    --amber:   #BA7517;
+    --red:     #E24B4A;
+    --green-bg:   #EAF3DE; --green-text: #27500A;
+    --amber-bg:   #FAEEDA; --amber-text: #633806;
+    --red-bg:     #FCEBEB; --red-text:   #791F1F;
+    --blue-bg:    #E6F1FB; --blue-text:  #0C447C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary:    #1e1e1c;
+      --bg-secondary:  #2a2a28;
+      --bg-tertiary:   #333331;
+      --text-primary:  #f0efe8;
+      --text-secondary:#b4b2a9;
+      --text-tertiary: #888780;
+      --border:    rgba(255,255,255,0.1);
+      --border-md: rgba(255,255,255,0.18);
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+  .app-header {
+    background: var(--bg-primary);
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .updated-at {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .container { max-width: 1040px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .card-title { font-size: 14px; font-weight: 500; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin: 1.25rem 0 0.75rem;
+    padding-bottom: 6px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .section-label:first-child { margin-top: 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media(max-width:640px) {
+    .grid4, .grid3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  .mcard {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+  }
+  .mcard .lbl { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+  .mcard .val { font-size: 22px; font-weight: 500; line-height: 1.2; }
+  .mcard .sub { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+  .period-tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .ptab {
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border-md);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .ptab:hover { background: var(--bg-secondary); }
+  .ptab.active { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; font-weight: 500; }
+  .chart-wrap { position: relative; width: 100%; height: 220px; margin: 1rem 0 0.5rem; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 8px 10px;
+    border-bottom: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+  .tbl-wrap { overflow-x: auto; }
+  .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .loading { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 13px; }
+  select {
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .roas-good { color: var(--green); font-weight: 600; }
+  .roas-warn { color: var(--amber); font-weight: 600; }
+  .roas-bad  { color: var(--red);   font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Campaign Dashboard
+  </div>
+  <span class="updated-at" id="updated-at">—</span>
+</header>
+
+<div class="container" id="app">
+  <div class="loading">Carregando dados…</div>
+</div>
+
+<script>
+const COL = {
+  date:        ['data', 'date', 'dia', 'period', 'periodo', 'período'],
+  campaign:    ['campanha', 'campaign', 'nome', 'name', 'campaign name'],
+  spend:       ['gasto', 'spend', 'investimento', 'custo', 'cost', 'valor gasto'],
+  impressions: ['impressoes', 'impressões', 'impressions', 'impr'],
+  clicks:      ['cliques', 'clicks', 'clique'],
+  conversions: ['conversoes', 'conversões', 'conversions', 'resultados', 'results', 'leads'],
+  ctr:         ['ctr'],
+  cpc:         ['cpc'],
+  cpm:         ['cpm'],
+  cpa:         ['cpa'],
+  roas:        ['roas'],
+};
+
+let allRows   = [];
+let headers   = [];
+let colMap    = {};
+let campaigns = [];
+let dates     = [];
+
+const brl  = n => n == null ? '—' : 'R$\u00a0' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const brl0 = n => n == null ? '—' : 'R$\u00a0' + Math.round(n).toLocaleString('pt-BR');
+const num  = n => n == null ? '—' : Number(n).toLocaleString('pt-BR');
+const pct  = n => n == null ? '—' : Number(n).toFixed(2) + '%';
+const sum  = (rows, col) => rows.reduce((a, r) => a + (parseFloat(r[col]) || 0), 0);
+
+function resolveCol(canonical) {
+  if (colMap[canonical]) return colMap[canonical];
+  for (const alias of COL[canonical] || []) {
+    const found = headers.find(h => h.toLowerCase().trim() === alias);
+    if (found) { colMap[canonical] = found; return found; }
+  }
+  return null;
+}
+
+async function loadData() {
+  try {
+    const res  = await fetch('data.json?_=' + Date.now());
+    const data = await res.json();
+    headers = data.headers || [];
+    allRows = data.rows    || [];
+    colMap  = {};
+    if (data.updated_at) {
+      const d = new Date(data.updated_at);
+      document.getElementById('updated-at').textContent =
+        'Atualizado em ' + d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    }
+    const campCol = resolveCol('campaign');
+    const dateCol = resolveCol('date');
+    if (campCol) campaigns = [...new Set(allRows.map(r => r[campCol]).filter(Boolean))].sort();
+    if (dateCol) dates = [...new Set(allRows.map(r => r[dateCol]).filter(Boolean))].sort();
+    render();
+  } catch (e) {
+    document.getElementById('app').innerHTML =
+      `<div class="card"><div class="empty" style="color:var(--red);">
+        Erro ao carregar data.json<br>
+        <small style="color:var(--text-tertiary);">${e.message}</small>
+      </div></div>`;
+  }
+}
+
+let filterCampaign = '';
+let filterPeriod   = '30';
+
+function filteredRows() {
+  const campCol = resolveCol('campaign');
+  const dateCol = resolveCol('date');
+  let rows = allRows;
+  if (filterCampaign && campCol) rows = rows.filter(r => r[campCol] === filterCampaign);
+  if (filterPeriod && dateCol) {
+    const cutoff = new Date(Date.now() - parseInt(filterPeriod) * 86400000);
+    rows = rows.filter(r => { const d = new Date(r[dateCol]); return !isNaN(d) && d >= cutoff; });
+  }
+  return rows;
+}
+
+let chartSpend = null;
+
+function render() {
+  const app  = document.getElementById('app');
+  const rows = filteredRows();
+  const spendCol  = resolveCol('spend');
+  const impCol    = resolveCol('impressions');
+  const clickCol  = resolveCol('clicks');
+  const convCol   = resolveCol('conversions');
+  const roasCol   = resolveCol('roas');
+  const ctrCol    = resolveCol('ctr');
+  const cpcCol    = resolveCol('cpc');
+  const cpmCol    = resolveCol('cpm');
+  const dateCol   = resolveCol('date');
+  const campCol   = resolveCol('campaign');
+  const totalSpend = spendCol  ? sum(rows, spendCol)  : null;
+  const totalImp   = impCol    ? sum(rows, impCol)     : null;
+  const totalClick = clickCol  ? sum(rows, clickCol)   : null;
+  const totalConv  = convCol   ? sum(rows, convCol)    : null;
+  const avgRoas    = (roasCol && rows.length) ? sum(rows, roasCol) / rows.length : null;
+  const avgCtr     = (ctrCol  && rows.length) ? sum(rows, ctrCol)  / rows.length : null;
+  const avgCpc     = (cpcCol  && rows.length) ? sum(rows, cpcCol)  / rows.length : null;
+  const cplCalc    = (totalSpend && totalConv) ? totalSpend / totalConv : null;
+
+  if (!allRows.length) {
+    app.innerHTML = `<div class="card"><div class="empty">
+      Nenhum dado disponível.<br>
+      O GitHub Actions ainda não rodou ou a planilha está vazia.
+    </div></div>`;
+    return;
+  }
+
+  const campOptions = ['<option value="">Todas as campanhas</option>',
+    ...campaigns.map(c => `<option value="${c}" ${c===filterCampaign?'selected':''}>${c}</option>`)
+  ].join('');
+  const roasClass = avgRoas == null ? '' : avgRoas >= 3 ? 'roas-good' : avgRoas >= 1 ? 'roas-warn' : 'roas-bad';
+
+  app.innerHTML = `
+    <div class="card" style="padding:1rem 1.25rem;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <select id="camp-filter" onchange="setCampaign(this.value)">${campOptions}</select>
+        <div class="period-tabs" style="margin:0;">
+          <button class="ptab ${filterPeriod==='7'?'active':''}"  onclick="setPeriod('7')">7 dias</button>
+          <button class="ptab ${filterPeriod==='14'?'active':''}" onclick="setPeriod('14')">14 dias</button>
+          <button class="ptab ${filterPeriod==='30'?'active':''}" onclick="setPeriod('30')">30 dias</button>
+          <button class="ptab ${filterPeriod===''?'active':''}"   onclick="setPeriod('')">Tudo</button>
+        </div>
+        <span style="font-size:12px;color:var(--text-tertiary);margin-left:auto;">${rows.length} registros</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">Visão geral</div>
+      <div class="grid4" style="margin-bottom:1rem;">
+        ${spendCol   ? `<div class="mcard"><div class="lbl">Investimento</div><div class="val">${brl0(totalSpend)}</div></div>` : ''}
+        ${totalImp  != null ? `<div class="mcard"><div class="lbl">Impressões</div><div class="val">${totalImp >= 1000 ? (totalImp/1000).toFixed(1)+'k' : num(totalImp)}</div></div>` : ''}
+        ${totalClick != null ? `<div class="mcard"><div class="lbl">Cliques</div><div class="val">${num(totalClick)}</div></div>` : ''}
+        ${totalConv  != null ? `<div class="mcard"><div class="lbl">Conversões</div><div class="val">${num(totalConv)}</div></div>` : ''}
+      </div>
+      <div class="grid4">
+        ${avgRoas != null ? `<div class="mcard"><div class="lbl">ROAS médio</div><div class="val ${roasClass}">${avgRoas.toFixed(2)}x</div></div>` : ''}
+        ${avgCtr  != null ? `<div class="mcard"><div class="lbl">CTR médio</div><div class="val">${pct(avgCtr)}</div></div>` : ''}
+        ${avgCpc  != null ? `<div class="mcard"><div class="lbl">CPC médio</div><div class="val">${brl(avgCpc)}</div></div>` : ''}
+        ${cplCalc != null ? `<div class="mcard"><div class="lbl">CPL (custo/conv.)</div><div class="val">${brl(cplCalc)}</div></div>` : ''}
+      </div>
+    </div>
+    ${dateCol && spendCol ? `
+    <div class="card">
+      <div class="section-label">Investimento ao longo do tempo</div>
+      <div class="chart-wrap"><canvas id="chart-spend"></canvas></div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#378ADD;"></span>Gasto</span>
+        ${convCol ? '<span><span class="legend-dot" style="background:#1D9E75;"></span>Conversões</span>' : ''}
+      </div>
+    </div>` : ''}
+    ${campCol ? `
+    <div class="card">
+      <div class="section-label">Por campanha</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Campanha</th>
+            ${spendCol  ? '<th>Gasto</th>'      : ''}
+            ${impCol    ? '<th>Impressões</th>'  : ''}
+            ${clickCol  ? '<th>Cliques</th>'     : ''}
+            ${ctrCol    ? '<th>CTR</th>'         : ''}
+            ${cpcCol    ? '<th>CPC</th>'         : ''}
+            ${convCol   ? '<th>Conversões</th>'  : ''}
+            ${roasCol   ? '<th>ROAS</th>'        : ''}
+          </tr></thead>
+          <tbody id="camp-tbody"></tbody>
+        </table>
+      </div>
+    </div>` : ''}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Todos os registros</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.slice(0,200).map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}
+            ${rows.length > 200 ? `<tr><td colspan="${headers.length}" style="text-align:center;color:var(--text-tertiary);font-size:12px;padding:12px;">+${rows.length-200} registros não exibidos</td></tr>` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  if (campCol) {
+    const tbody = document.getElementById('camp-tbody');
+    if (tbody) {
+      const grouped = {};
+      rows.forEach(r => { const c = r[campCol]||'(sem nome)'; if(!grouped[c]) grouped[c]=[]; grouped[c].push(r); });
+      tbody.innerHTML = Object.entries(grouped).map(([name, rs]) => {
+        const rs_roas = roasCol ? sum(rs,roasCol)/rs.length : null;
+        const rc = rs_roas==null?'':rs_roas>=3?'roas-good':rs_roas>=1?'roas-warn':'roas-bad';
+        return `<tr>
+          <td>${name}</td>
+          ${spendCol  ? `<td>${brl0(sum(rs,spendCol))}</td>`       : ''}
+          ${impCol    ? `<td>${num(sum(rs,impCol))}</td>`           : ''}
+          ${clickCol  ? `<td>${num(sum(rs,clickCol))}</td>`         : ''}
+          ${ctrCol    ? `<td>${pct(sum(rs,ctrCol)/rs.length)}</td>` : ''}
+          ${cpcCol    ? `<td>${brl(sum(rs,cpcCol)/rs.length)}</td>` : ''}
+          ${convCol   ? `<td>${num(sum(rs,convCol))}</td>`          : ''}
+          ${roasCol   ? `<td class="${rc}">${rs_roas!=null?rs_roas.toFixed(2)+'x':'—'}</td>` : ''}
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  if (dateCol && spendCol) {
+    const dayMap = {};
+    rows.forEach(r => {
+      const d = r[dateCol]; if(!d) return;
+      if(!dayMap[d]) dayMap[d]={spend:0,conv:0};
+      dayMap[d].spend += parseFloat(r[spendCol])||0;
+      if(convCol) dayMap[d].conv += parseFloat(r[convCol])||0;
+    });
+    const sortedDays = Object.keys(dayMap).sort();
+    const labels = sortedDays.map(d => d.slice(5));
+    if (chartSpend) { chartSpend.destroy(); chartSpend = null; }
+    chartSpend = new Chart(document.getElementById('chart-spend'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label:'Gasto', data:sortedDays.map(d=>dayMap[d].spend), backgroundColor:'#378ADD', borderRadius:3, yAxisID:'y' },
+          ...(convCol ? [{ label:'Conversões', data:sortedDays.map(d=>dayMap[d].conv), backgroundColor:'#1D9E75', borderRadius:3, yAxisID:'y1' }] : []),
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales: {
+          x:  { ticks:{font:{size:11},autoSkip:true,maxRotation:45}, grid:{display:false} },
+          y:  { ticks:{font:{size:11},callback:v=>'R$'+v}, grid:{color:'rgba(128,128,128,0.1)'}, position:'left' },
+          ...(convCol ? {y1:{ticks:{font:{size:11}},grid:{display:false},position:'right'}} : {}),
+        }
+      }
+    });
+  }
+}
+
+function setCampaign(val) { filterCampaign = val; render(); }
+function setPeriod(val)   { filterPeriod   = val; render(); }
+
+loadData();
+</script>
+</body>
+</html>
